@@ -138,18 +138,11 @@ export function StepExport({
                       />
                     </Field>
 
-                    <Field label="LargeItemLimit" htmlFor={`large-${assignment.name}`}>
-                      <input
-                        id={`large-${assignment.name}`}
-                        type="number"
-                        min={1}
-                        className={inputClass}
-                        value={params.largeItemLimit}
-                        onChange={(event) =>
-                          update({ largeItemLimit: Math.max(1, Number(event.target.value) || 1) })
-                        }
-                      />
-                    </Field>
+                    <p className="text-xs text-[color:var(--color-ink-muted)]">
+                      La commande inclut aussi <code className="font-mono">-Local</code> et{' '}
+                      <code className="font-mono">-AllowUnknownColumnsInCsv:$true</code> (nos CSV
+                      conservent les colonnes d’origine).
+                    </p>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-6">

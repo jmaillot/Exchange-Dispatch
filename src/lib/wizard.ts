@@ -58,7 +58,6 @@ export function defaultBatchParams(batchName: string): BatchParams {
     autoStart: true,
     autoComplete: true,
     badItemLimit: 0,
-    largeItemLimit: 100,
     notificationEmails: [],
   }
 }

@@ -48,7 +48,9 @@ export const batchParamsSchema = z.object({
   autoStart: z.boolean(),
   autoComplete: z.boolean(),
   badItemLimit: z.number().int().min(0, 'La limite d’éléments invalides ne peut pas être négative.'),
-  largeItemLimit: z.number().int().min(1, 'La limite d’éléments volumineux doit valoir au moins 1.'),
+  // Pas de LargeItemLimit : ce paramètre n'existe pas dans le jeu « Local »
+  // de New-MigrationBatch (émettre -LargeItemLimit ferait échouer la
+  // commande). La limite des éléments volumineux reste celle du service MRS.
   notificationEmails: z.array(emailSchema).max(
     MAX_NOTIFICATION_EMAILS,
     `Exchange accepte au maximum ${MAX_NOTIFICATION_EMAILS} destinataires par batch.`,
@@ -132,13 +134,16 @@ export function buildBatchCommand(
   csvFileName: string,
   inScript = false,
 ): string {
+  // Conforme à l'exemple 1 de la doc (déplacement local) : -Local est
+  // obligatoire pour un déplacement on-premises, et -AllowUnknownColumnsInCsv
+  // parce que nos CSV conservent les colonnes d'origine en plus d'EmailAddress.
   const parts = [
-    `New-MigrationBatch`,
+    `New-MigrationBatch -Local`,
     `  -Name ${psSingleQuoted(params.batchName)}`,
     `  -CSVData ${csvDataExpression(csvFileName, inScript)}`,
     `  -TargetDatabases ${psSingleQuoted(targetDatabase)}`,
+    `  -AllowUnknownColumnsInCsv:$true`,
     `  -BadItemLimit ${params.badItemLimit}`,
-    `  -LargeItemLimit ${params.largeItemLimit}`,
   ]
 
   if (params.autoStart) {
@@ -302,8 +307,15 @@ export const SERVER_STEPS: readonly ServerStep[] = [
   },
   {
     title: 'Lancer la création des batchs',
-    detail: 'Crée un New-MigrationBatch par base non vide, vers sa base cible.',
+    detail: 'Crée un New-MigrationBatch -Local par base non vide, vers sa base cible.',
     command: '.\\migration-batches.ps1',
+  },
+  {
+    title: 'Démarrer si besoin (sans -AutoStart)',
+    detail:
+      'Sans -AutoStart, le batch reste en attente après sa création : démarrez-le ' +
+      'explicitement, comme dans l’exemple 1 de la documentation.',
+    command: "Start-MigrationBatch -Identity '<nom du batch>'",
   },
   {
     title: 'Suivre la progression',

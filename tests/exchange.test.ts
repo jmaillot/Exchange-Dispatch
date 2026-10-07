@@ -55,7 +55,6 @@ const DEFAULT_PARAMS: BatchParams = {
   autoStart: true,
   autoComplete: true,
   badItemLimit: 0,
-  largeItemLimit: 100,
   notificationEmails: ['admin@exemple.fr'],
 }
 
@@ -121,13 +120,20 @@ describe('buildBatchCommand', () => {
   it('reprend tous les paramètres configurables', () => {
     const command = buildBatchCommand(DEFAULT_PARAMS, 'DB01', 'batch.csv')
 
+    expect(command).toContain('New-MigrationBatch -Local')
     expect(command).toContain(`-Name 'MigrationDB01'`)
     expect(command).toContain(`-TargetDatabases 'DB01'`)
+    expect(command).toContain('-AllowUnknownColumnsInCsv:$true')
     expect(command).toContain(`-BadItemLimit 0`)
-    expect(command).toContain(`-LargeItemLimit 100`)
     expect(command).toContain(`-AutoStart`)
     expect(command).toContain(`-AutoComplete`)
     expect(command).toContain(`-NotificationEmails @('admin@exemple.fr')`)
+  })
+
+  it('n’émet jamais -LargeItemLimit (absent du jeu Local)', () => {
+    const command = buildBatchCommand(DEFAULT_PARAMS, 'DB01', 'batch.csv')
+
+    expect(command).not.toContain('LargeItemLimit')
   })
 
   it('lit le CSV en octets, pas comme un chemin', () => {
@@ -193,9 +199,14 @@ describe('batchParamsSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('refuse un largeItemLimit nul', () => {
-    const result = batchParamsSchema.safeParse({ ...DEFAULT_PARAMS, largeItemLimit: 0 })
-    expect(result.success).toBe(false)
+  it('écarte un largeItemLimit hérité d’une ancienne version', () => {
+    // Zod ignore les clés inconnues : un objet conservé d’avant la
+    // correction est accepté, mais la clé ne ressort pas côté commande.
+    const result = batchParamsSchema.safeParse({ ...DEFAULT_PARAMS, largeItemLimit: 100 })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect('largeItemLimit' in result.data).toBe(false)
+    }
   })
 
   it('refuse une adresse de notification invalide', () => {
@@ -295,6 +306,9 @@ describe('SERVER_STEPS', () => {
     expect(titles).toContain('Exchange Management Shell')
     expect(titles).toContain('WhatIf')
     expect(titles).toContain('AutoComplete')
+    expect(SERVER_STEPS.some((step) => step.command?.startsWith('Start-MigrationBatch'))).toBe(
+      true,
+    )
   })
 })
 

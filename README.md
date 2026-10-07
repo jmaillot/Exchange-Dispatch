@@ -84,9 +84,12 @@ Pour chaque base non vide :
 - un CSV `batch-<nom>.csv` **toujours en virgules** (c'est ce qu'exige
   `New-MigrationBatch -CSVData`), avec `EmailAddress` en première colonne
   suivi de toutes les colonnes d'origine dans leur ordre initial ;
-- une commande `New-MigrationBatch` avec les paramètres éditables (nom du
-  batch, `-AutoStart`, `-AutoComplete`, `-BadItemLimit`, `-LargeItemLimit`,
-  `-NotificationEmails`).
+- une commande `New-MigrationBatch -Local` avec les paramètres éditables
+  (nom du batch, `-AutoStart`, `-AutoComplete`, `-BadItemLimit`,
+  `-NotificationEmails`), la base cible (`-TargetDatabases`) et
+  `-AllowUnknownColumnsInCsv` (nos CSV conservent les colonnes d'origine).
+  `-LargeItemLimit` n'existe pas dans le jeu de paramètres « Local » et
+  n'est donc pas émis.
 
 Et pour l'ensemble : un script `migration-batches.ps1` qui crée tous les
 batchs en une fois (supporte `-WhatIf`, réutilise un batch déjà présent au
@@ -121,6 +124,10 @@ commentaire en tête du script `.ps1`.
    .\migration-batches.ps1
    ```
    Chaque batch déplace ses boîtes vers sa base (`-TargetDatabases`).
+   Sans `-AutoStart`, démarrez chaque batch à la main :
+   ```powershell
+   Start-MigrationBatch -Identity '<nom du batch>'
+   ```
 6. **Suivre la progression** :
    ```powershell
    Get-MigrationBatch | Format-Table Name, Status
