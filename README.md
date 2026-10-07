@@ -95,22 +95,45 @@ lieu de le dupliquer) et un récapitulatif `repartition.txt`.
 Une base sans aucune boîte ne produit ni CSV ni commande : un batch sans
 destinataire échouerait sur le serveur.
 
-## Avant de lancer la migration
+## Côté serveur Exchange
 
-L'application affiche ces avertissements à l'étape Export, mais elle ne
-peut pas les vérifier elle-même :
+La même marche à suivre est affichée dans l'application (étape Export) et en
+commentaire en tête du script `.ps1`.
 
-- **Espace disque** — la répartition ne connaît que la taille des boîtes,
-  pas la place restante sur les volumes. Une migration a besoin de la taille
-  des données **plus** la copie en cours de déplacement **plus** les
-  journaux de transaction. Prévoyez au moins le double de la taille totale
-  par base.
-- **Journaux de transaction** — la croissance doit être activée sur les
-  bases de destination, sinon la migration bloque dès que le journal est
-  plein.
-- **`-AutoComplete`** — sans lui, le batch s'arrête sans être finalisé et
-  les boîtes ne sont pas déplacées. Finalisez avec
-  `Complete-MigrationBatch`, ou cochez la case dans l'outil.
+1. **Copier les fichiers sur le serveur** — le script `.ps1` et tous les
+   `batch-*.csv` du ZIP, dans un même dossier (par exemple `C:\Migration`).
+2. **Ouvrir l'Exchange Management Shell** — pas une console PowerShell
+   classique, avec un compte membre du rôle Organization Management.
+3. **Vérifier l'espace disque et les journaux** — le script ne le fait pas
+   pour vous :
+   ```powershell
+   Get-MailboxDatabase -Status | Format-Table Name, DatabaseSize, AvailableNewMailboxSpace
+   ```
+   Prévoyez au moins le double de la taille totale par base (données + copie
+   en cours + journaux de transaction), et vérifiez que la croissance des
+   journaux est activée.
+4. **Tester avec `-WhatIf`** — affiche les commandes sans rien exécuter :
+   ```powershell
+   .\migration-batches.ps1 -WhatIf
+   ```
+5. **Lancer la création des batchs** :
+   ```powershell
+   .\migration-batches.ps1
+   ```
+   Chaque batch déplace ses boîtes vers sa base (`-TargetDatabases`).
+6. **Suivre la progression** :
+   ```powershell
+   Get-MigrationBatch | Format-Table Name, Status
+   ```
+7. **Finaliser si besoin** — sans `-AutoComplete`, le batch s'arrête une fois
+   synchronisé et les boîtes ne sont pas déplacées :
+   ```powershell
+   Complete-MigrationBatch -Identity '<nom du batch>'
+   ```
+8. **Nettoyer** — quand les boîtes sont confirmées sur les nouvelles bases :
+   ```powershell
+   Remove-MigrationBatch -Identity '<nom du batch>'
+   ```
 
 ## Développement
 

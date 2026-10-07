@@ -9,10 +9,38 @@ import {
   buildTextExports,
   preMigrationChecks,
   SCRIPT_FILE_NAME,
+  SERVER_STEPS,
   type BatchParamsByDatabase,
 } from '@/lib/exchange'
 import type { BatchParams } from '@/lib/exchange'
 import { Card, Field, Notice, PrimaryButton, SecondaryButton, inputClass } from './ui'
+
+/** Bouton copier avec confirmation visuelle brève. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Presse-papiers indisponible (contexte non sécurisé) : l’utilisateur
+      // sélectionne le texte manuellement.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="shrink-0 rounded border border-[color:var(--color-border)] px-2 py-1 text-xs hover:bg-[color:var(--color-surface-muted)]"
+      aria-live="polite"
+    >
+      {copied ? 'Copié ✓' : 'Copier'}
+    </button>
+  )
+}
 
 /** Étape 6 : paramètres des batchs, avertissements et téléchargement. */
 export function StepExport({
@@ -163,6 +191,36 @@ export function StepExport({
             </Notice>
           ))}
         </div>
+      </Card>
+
+      <Card
+        title="Sur le serveur Exchange"
+        hint="Dans l’ordre, depuis l’Exchange Management Shell. Le script .ps1 embarque la même liste en commentaire."
+      >
+        <ol className="space-y-4">
+          {SERVER_STEPS.map((step, index) => (
+            <li key={step.title} className="flex gap-3">
+              <span
+                aria-hidden="true"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-accent-soft)] text-xs font-semibold text-[color:var(--color-accent)]"
+              >
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{step.title}</p>
+                <p className="mt-0.5 text-sm text-[color:var(--color-ink-muted)]">{step.detail}</p>
+                {step.command !== undefined && (
+                  <div className="mt-2 flex items-start gap-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto rounded bg-[color:var(--color-surface-muted)] px-2 py-1.5 font-mono text-xs break-all">
+                      {step.command}
+                    </code>
+                    <CopyButton text={step.command} />
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
       </Card>
 
       <Card title="Téléchargement">

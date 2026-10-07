@@ -3,6 +3,7 @@ import { balanceMailboxes, toMailboxes, type Mailbox } from '@/lib/balance'
 import {
   EMAIL_COLUMN,
   SCRIPT_FILE_NAME,
+  SERVER_STEPS,
   batchFileName,
   batchParamsSchema,
   buildBatchCommand,
@@ -118,10 +119,10 @@ describe('buildBatchCsv', () => {
 
 describe('buildBatchCommand', () => {
   it('reprend tous les paramètres configurables', () => {
-    const command = buildBatchCommand(DEFAULT_PARAMS, 'batch.csv')
+    const command = buildBatchCommand(DEFAULT_PARAMS, 'DB01', 'batch.csv')
 
     expect(command).toContain(`-Name 'MigrationDB01'`)
-    expect(command).toContain(`-CSVData 'batch.csv'`)
+    expect(command).toContain(`-TargetDatabases 'DB01'`)
     expect(command).toContain(`-BadItemLimit 0`)
     expect(command).toContain(`-LargeItemLimit 100`)
     expect(command).toContain(`-AutoStart`)
@@ -129,9 +130,26 @@ describe('buildBatchCommand', () => {
     expect(command).toContain(`-NotificationEmails @('admin@exemple.fr')`)
   })
 
+  it('lit le CSV en octets, pas comme un chemin', () => {
+    // -CSVData attend un Byte[] : lui passer le nom du fichier enverrait
+    // le nom lui-même comme données.
+    const command = buildBatchCommand(DEFAULT_PARAMS, 'DB01', 'batch.csv')
+
+    expect(command).toContain(`-CSVData ([System.IO.File]::ReadAllBytes('batch.csv'))`)
+  })
+
+  it('résout le chemin depuis le dossier du script dans le .ps1', () => {
+    const command = buildBatchCommand(DEFAULT_PARAMS, 'DB01', 'batch.csv', true)
+
+    expect(command).toContain(
+      `-CSVData ([System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'batch.csv')))`,
+    )
+  })
+
   it('omet -AutoStart et -AutoComplete quand ils sont décochés', () => {
     const command = buildBatchCommand(
       { ...DEFAULT_PARAMS, autoStart: false, autoComplete: false },
+      'DB01',
       'batch.csv',
     )
 
@@ -140,25 +158,32 @@ describe('buildBatchCommand', () => {
   })
 
   it('omet -NotificationEmails si la liste est vide', () => {
-    const command = buildBatchCommand({ ...DEFAULT_PARAMS, notificationEmails: [] }, 'batch.csv')
+    const command = buildBatchCommand(
+      { ...DEFAULT_PARAMS, notificationEmails: [] },
+      'DB01',
+      'batch.csv',
+    )
     expect(command).not.toContain('-NotificationEmails')
   })
 
   it('neutralise les valeurs qui casseraient une commande', () => {
     const command = buildBatchCommand(
       { ...DEFAULT_PARAMS, batchName: 'Batch " $-dangereux' },
+      "DB01'; Remove-Mailbox -Identity x; '",
       "fichier'; Remove-Mailbox -Identity x; '.csv",
     )
 
     // Le guillemet double et le $ restent confinés dans des guillemets
     // simples : PowerShell ne les interprète pas.
     expect(command).toContain(`-Name 'Batch " $-dangereux'`)
-    expect(command).toContain(
-      `-CSVData 'fichier''; Remove-Mailbox -Identity x; ''.csv'`,
-    )
-    // Aucune valeur n'est placée hors guillemets simples.
-    expect(command.replace(/'[^']*'/g, '')).not.toContain('"')
-    expect(command.replace(/'[^']*'/g, '')).not.toContain('$')
+    expect(command).toContain(`-TargetDatabases 'DB01''; Remove-Mailbox -Identity x; '''`)
+    // Aucune valeur n'est placée hors guillemets simples, à l'exception
+    // des expressions PowerShell que nous produisons nous-mêmes.
+    const outsideQuotes = command
+      .replace(/'[^']*'/g, '')
+      .replace(/\(\[System\.IO\.File\]::ReadAllBytes\((.*?)\)\)/g, '')
+    expect(outsideQuotes).not.toContain('"')
+    expect(outsideQuotes).not.toContain('$PSScriptRoot')
   })
 })
 
@@ -243,6 +268,33 @@ describe('buildScript', () => {
 
     expect(script).toContain(`$existing -contains 'B1'`)
     expect(script).toContain('ShouldProcess')
+  })
+
+  it('cible la base de destination et lit le CSV depuis le dossier du script', () => {
+    const summary = summarize(ROWS, ['DB01'])
+    const script = buildScript(summary, { DB01: { ...DEFAULT_PARAMS, batchName: 'B1' } })
+
+    expect(script).toContain(`-TargetDatabases 'DB01'`)
+    expect(script).toContain(`Join-Path $PSScriptRoot 'batch-B1.csv'`)
+  })
+
+  it('embarque le mode d’emploi côté serveur', () => {
+    const summary = summarize(ROWS, ['DB01'])
+    const script = buildScript(summary, { DB01: { ...DEFAULT_PARAMS, batchName: 'B1' } })
+
+    expect(script).toContain('Exchange Management Shell')
+    expect(script).toContain('Complete-MigrationBatch')
+    expect(script).toContain('Remove-MigrationBatch')
+  })
+})
+
+describe('SERVER_STEPS', () => {
+  it('couvre le parcours complet côté serveur', () => {
+    const titles = SERVER_STEPS.map((step) => step.title).join(' | ')
+
+    expect(titles).toContain('Exchange Management Shell')
+    expect(titles).toContain('WhatIf')
+    expect(titles).toContain('AutoComplete')
   })
 })
 

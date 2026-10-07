@@ -105,17 +105,38 @@ function columnValue(mailbox: Mailbox, column: string): string {
 }
 
 /**
+ * Expression PowerShell qui lit un CSV en octets pour `-CSVData`.
+ *
+ * `-CSVData` attend un tableau d'octets, pas un chemin : lui passer le nom
+ * du fichier enverrait le nom lui-même comme données. Dans le script, le
+ * chemin est résolu depuis son propre dossier ; en commande isolée, depuis
+ * le dossier courant — d'où la consigne de se placer dans le dossier des
+ * CSV avant de coller la commande.
+ */
+export function csvDataExpression(csvFileName: string, inScript: boolean): string {
+  const quoted = psSingleQuoted(csvFileName)
+  const path = inScript ? `(Join-Path $PSScriptRoot ${quoted})` : quoted
+  return `([System.IO.File]::ReadAllBytes(${path}))`
+}
+
+/**
  * Commande `New-MigrationBatch` pour une base.
  *
- * `-CSVData` suffit : Exchange lit la colonne EmailAddress du fichier. Aucune
- * valeur issue du CSV n'est injectée dans la commande, et les valeurs
- * configurables passent toutes par `psSingleQuoted`.
+ * `-TargetDatabases` est obligatoire : sans lui, Exchange ne sait pas vers
+ * quelle base déplacer les boîtes. Aucune valeur issue du CSV n'est injectée
+ * dans la commande ; les valeurs configurables passent par `psSingleQuoted`.
  */
-export function buildBatchCommand(params: BatchParams, csvFileName: string): string {
+export function buildBatchCommand(
+  params: BatchParams,
+  targetDatabase: string,
+  csvFileName: string,
+  inScript = false,
+): string {
   const parts = [
     `New-MigrationBatch`,
     `  -Name ${psSingleQuoted(params.batchName)}`,
-    `  -CSVData ${psSingleQuoted(csvFileName)}`,
+    `  -CSVData ${csvDataExpression(csvFileName, inScript)}`,
+    `  -TargetDatabases ${psSingleQuoted(targetDatabase)}`,
     `  -BadItemLimit ${params.badItemLimit}`,
     `  -LargeItemLimit ${params.largeItemLimit}`,
   ]
@@ -156,12 +177,19 @@ const SCRIPT_HEADER = `<#
     par Exchange DB Balancer.
 
 .DESCRIPTION
-    Exécutez ce script depuis la console Exchange Management Shell, sur un
-    serveur Exchange Server on-premises, dans le dossier contenant les CSV.
-
-    Le script ne valide PAS la place disponible sur les bases de destination :
-    vérifiez vous-même l'espace disque et les journaux de transaction avant de
-    lancer.
+    1. Copiez ce script ET les fichiers batch-*.csv dans un même dossier sur
+       un serveur Exchange Server on-premises.
+    2. Ouvrez l'Exchange Management Shell (pas une console PowerShell
+       classique) avec un compte membre de Organization Management.
+    3. Vérifiez l'espace disque des volumes cibles et les journaux de
+       transaction AVANT de lancer (le script ne le fait pas pour vous).
+    4. Testez d'abord avec -WhatIf : .\\migration-batches.ps1 -WhatIf
+    5. Lancez pour de bon : .\\migration-batches.ps1
+    6. Suivez la progression : Get-MigrationBatch | Format-Table Name, Status
+    7. Sans -AutoComplete : finalisez chaque batch terminé avec
+       Complete-MigrationBatch -Identity '<nom du batch>'.
+    8. Une fois les boîtes vérifiées sur les nouvelles bases, nettoyez avec
+       Remove-MigrationBatch -Identity '<nom du batch>'.
 
 .PARAMETER WhatIf
     N'exécute rien, affiche seulement les commandes qui seraient lancées.
@@ -206,11 +234,11 @@ export function buildScript(
     const fileName = batchFileName(params.batchName)
     sections.push(
       [
-        `# --- ${assignment.name} : ${assignment.count} boîtes, ${formatNumber(assignment.totalMb)} Mo ---`,
+        `# --- ${assignment.name} : ${assignment.count} boîte${assignment.count > 1 ? 's' : ''}, ${formatNumber(assignment.totalMb)} Mo ---`,
         `if ($existing -contains ${psSingleQuoted(params.batchName)}) {`,
         `    Write-Warning ${psSingleQuoted(`Batch déjà présent : ${params.batchName}`)}`,
         `} elseif ($PSCmdlet.ShouldProcess(${psSingleQuoted(params.batchName)}, 'Créer le batch de migration')) {`,
-        `    ${buildBatchCommand(params, fileName)}`,
+        `    ${buildBatchCommand(params, assignment.name, fileName, true)}`,
         `}`,
       ].join('\r\n'),
     )
@@ -231,6 +259,71 @@ export type PreMigrationCheck = {
   title: string
   detail: string
 }
+
+/** Une étape à effectuer sur le serveur Exchange, affichée dans l'export. */
+export type ServerStep = {
+  title: string
+  detail: string
+  /** Commande à copier, le cas échéant. */
+  command?: string
+}
+
+/**
+ * Marche à suivre côté serveur Exchange, dans l'ordre.
+ *
+ * C'est la même liste que l'en-tête du script .ps1, sous forme structurée
+ * pour l'affichage. Toute modification ici doit être répercutée dans
+ * SCRIPT_HEADER (le script embarque sa propre copie pour rester autonome).
+ */
+export const SERVER_STEPS: readonly ServerStep[] = [
+  {
+    title: 'Copier les fichiers sur le serveur',
+    detail:
+      'Déposez le script .ps1 et tous les fichiers batch-*.csv du ZIP dans un même dossier ' +
+      'sur un serveur Exchange Server on-premises (par exemple C:\\Migration).',
+  },
+  {
+    title: 'Ouvrir l’Exchange Management Shell',
+    detail:
+      'Utilisez l’Exchange Management Shell, pas une console PowerShell classique, avec un ' +
+      'compte membre du rôle Organization Management.',
+  },
+  {
+    title: 'Vérifier l’espace disque et les journaux',
+    detail:
+      'Contrôlez la place restante sur les volumes des bases de destination et la croissance ' +
+      'des journaux de transaction. Le script ne le fait pas pour vous.',
+    command: 'Get-MailboxDatabase -Status | Format-Table Name, DatabaseSize, AvailableNewMailboxSpace',
+  },
+  {
+    title: 'Tester avec -WhatIf',
+    detail: 'Affiche les commandes qui seraient lancées, sans rien exécuter.',
+    command: '.\\migration-batches.ps1 -WhatIf',
+  },
+  {
+    title: 'Lancer la création des batchs',
+    detail: 'Crée un New-MigrationBatch par base non vide, vers sa base cible.',
+    command: '.\\migration-batches.ps1',
+  },
+  {
+    title: 'Suivre la progression',
+    detail: 'Un batch passe par les statuts Validating, Queued, InProgress puis Synced.',
+    command: 'Get-MigrationBatch | Format-Table Name, Status',
+  },
+  {
+    title: 'Finaliser si besoin (sans -AutoComplete)',
+    detail:
+      'Sans -AutoComplete, le batch s’arrête une fois synchronisé : les boîtes ne sont pas ' +
+      'déplacées tant que vous ne l’avez pas finalisé.',
+    command: "Complete-MigrationBatch -Identity '<nom du batch>'",
+  },
+  {
+    title: 'Nettoyer une fois vérifié',
+    detail:
+      'Quand les boîtes sont confirmées sur les nouvelles bases, supprimez les batchs terminés.',
+    command: "Remove-MigrationBatch -Identity '<nom du batch>'",
+  },
+]
 
 /**
  * Vérifications à faire avant de lancer la migration.
@@ -347,7 +440,7 @@ export function buildSummaryReport(summary: BalanceSummary): string {
   for (const assignment of summary.assignments) {
     const deviation = Math.abs(assignment.totalMb - summary.averageMb)
     lines.push(
-      `${assignment.name} : ${assignment.count} boîte(s), ` +
+      `${assignment.name} : ${assignment.count} boîte${assignment.count > 1 ? 's' : ''}, ` +
         `${formatNumber(assignment.totalMb)} Mo, écart à la moyenne ${formatNumber(deviation)} Mo`,
     )
   }
