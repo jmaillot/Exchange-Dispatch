@@ -153,16 +153,13 @@ React et est couverte par des tests. Ne commitez jamais de données réelles :
 les `*.csv` sont ignorés sauf `tests/fixtures/*.csv` et
 `public/exemple.csv`, qui sont fictifs.
 
-## Déploiement sur Vercel
+## Accès
 
-Aucune configuration requise :
+L'application est accessible sur : <https://exchange-dispatch.vercel.app/>
 
-1. Poussez la branche `main` sur GitHub.
-2. Importez le dépôt dans Vercel (framework détecté automatiquement :
-   Next.js, gestionnaire détecté via `pnpm-lock.yaml`).
-3. Déployez : `pnpm build` produit un export statique (`output: 'export'`),
-   ce qui garantit par construction qu'aucune donnée ne transite par un
-   serveur.
+Aucune installation requise : ouvrez l'URL dans un navigateur et déposez
+votre CSV. Tout se passe localement dans le navigateur, aucune donnée
+n'est envoyée sur internet.
 
 ## Limites connues
 

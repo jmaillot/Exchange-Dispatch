@@ -10,7 +10,7 @@ de création des batchs de migration.
 - Next.js (App Router), TypeScript strict, Tailwind
 - PapaParse, Zod, JSZip, Vitest
 - Gestionnaire de paquets : pnpm
-- Code sur GitHub, déploiement Vercel (branche main)
+- Code sur GitHub, application en ligne : https://exchange-dispatch.vercel.app/
 
 ## Contraintes non négociables
 - 100 % client-side : aucune donnée CSV envoyée à un serveur, aucun stockage
@@ -65,8 +65,8 @@ pnpm dev | pnpm build | pnpm lint | pnpm test | pnpm typecheck
 lint + typecheck + tests + build passent. Les tests couvrent : 1 base,
 5 bases, une boîte plus grosse que la moyenne, tailles identiques, moins de
 boîtes que de bases, CSV invalide. Le README explique l'usage, le format
-attendu, l'export PowerShell conseillé pour produire le CSV d'entrée, et le
-déploiement Vercel.
+attendu, l'export PowerShell conseillé pour produire le CSV d'entrée, et
+l'accès à l'application en ligne.
 
 ## Façon de travailler
 - Plan court avant de coder, puis jalons commités.
