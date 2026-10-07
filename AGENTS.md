@@ -22,8 +22,11 @@ de création des batchs de migration.
 
 ## Format d'entrée (référence)
 Colonnes : DisplayName, Alias, SamAccountName, UserPrincipalName, FirstName,
-LastName, MailboxSizeMB. Séparateur virgule, en-têtes, MailboxSizeMB en
-mégaoctets avec point décimal (ex. 1.52), boîte principale uniquement.
+LastName, MailboxSizeMB. Séparateur détecté automatiquement (virgule,
+point-virgule ou tabulation — les exports de serveurs français sont
+souvent en `;`), en-têtes, MailboxSizeMB en mégaoctets avec point décimal
+(ex. 1.52), boîte principale uniquement. Les CSV produits en sortie sont
+toujours en virgules, comme l'exige `New-MigrationBatch`.
 Colonnes supplémentaires tolérées et conservées. Pas de colonne "base
 actuelle" : l'équilibrage ne dépend pas de l'existant.
 

@@ -14,7 +14,10 @@ internet, rien n'est stocké (pas de `localStorage`), aucun tracker.
 
 ## Format du CSV d'entrée
 
-Séparateur virgule, première ligne = en-têtes. Boîtes principales uniquement
+Séparateur détecté automatiquement : virgule, point-virgule ou tabulation.
+Les exports de serveurs français sont le plus souvent en point-virgule
+(`Export-Csv` utilise le séparateur de la culture du système) : importez le
+fichier tel quel. Première ligne = en-têtes. Boîtes principales uniquement
 (pas les archives).
 
 | Colonne | Obligatoire | Exemple |
@@ -63,8 +66,10 @@ Quelques notes sur cette commande :
   milliers de boîtes, comptez plusieurs minutes. `TotalItemSize` sans
   `-Archive` mesure la boîte principale uniquement, ce qui correspond à ce
   que migre le batch.
-- `-Delimiter ','` est obligatoire : par défaut `Export-Csv` utilise le
+- `-Delimiter ','` force la virgule ; sans lui, `Export-Csv` utilise le
   séparateur de la culture du système, soit `;` sur un serveur français.
+  L'application lit les deux, donc vous pouvez l'omettre si vous préférez
+  le format par défaut.
 - `.ToString([cultureinfo]::InvariantCulture)` force le point décimal, que
   l'application lit en référence (la virgule passe aussi, mais le point est
   le format attendu).
@@ -76,8 +81,9 @@ Quelques notes sur cette commande :
 
 Pour chaque base non vide :
 
-- un CSV `batch-<nom>.csv`, avec `EmailAddress` en première colonne suivi de
-  toutes les colonnes d'origine dans leur ordre initial ;
+- un CSV `batch-<nom>.csv` **toujours en virgules** (c'est ce qu'exige
+  `New-MigrationBatch -CSVData`), avec `EmailAddress` en première colonne
+  suivi de toutes les colonnes d'origine dans leur ordre initial ;
 - une commande `New-MigrationBatch` avec les paramètres éditables (nom du
   batch, `-AutoStart`, `-AutoComplete`, `-BadItemLimit`, `-LargeItemLimit`,
   `-NotificationEmails`).

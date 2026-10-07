@@ -122,6 +122,22 @@ describe('parseCsv', () => {
     expect(result.rows[0]?.Department).toBe('IT')
   })
 
+  it('détecte le point-virgule des exports français', () => {
+    const result = parseCsv(
+      'DisplayName;SamAccountName;UserPrincipalName;MailboxSizeMB\n' +
+        'Isaiah Langer;$13L121-8S67KRCO4IK4;isaiah@exemple.fr;1,52',
+    )
+    expect(result.headers).toEqual([
+      'DisplayName',
+      'SamAccountName',
+      'UserPrincipalName',
+      'MailboxSizeMB',
+    ])
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]?.SamAccountName).toBe('$13L121-8S67KRCO4IK4')
+    expect(result.issues).toHaveLength(0)
+  })
+
   it('signale adresse vide, taille illisible et doublon', () => {
     const result = parseCsv(fixture('quality-issues.csv'))
 

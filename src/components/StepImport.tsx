@@ -67,7 +67,7 @@ export function StepImport({
     <div className="space-y-4">
       <Card
         title="Fichier CSV"
-        hint="Séparateur virgule, première ligne = en-têtes. Boîte principale uniquement."
+        hint="Virgule, point-virgule ou tabulation (détecté automatiquement), première ligne = en-têtes. Boîte principale uniquement."
       >
         <div className="flex flex-wrap items-center gap-3">
           <input
