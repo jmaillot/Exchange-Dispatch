@@ -12,9 +12,10 @@ import { parseSizeMb, type RawRow } from './parse'
  *  2. Amélioration locale — déplacements et échanges tant qu'ils réduisent
  *     l'écart max-min.
  *
- * Déterminisme : le tri départage les égalités par la position d'origine dans
- * le fichier, et chaque passe applique toujours le meilleur mouvement trouvé,
- * jamais le premier. Mêmes entrées = même sortie.
+ * Déterminisme : le tri départage les égalités par adresse email (puis par
+ * position d'origine en dernier ressort), et chaque passe applique toujours
+ * le meilleur mouvement trouvé, jamais le premier. Mêmes entrées, même sortie,
+ * quel que soit l'ordre des lignes du CSV.
  *
  * Les bases vides sont hors de l'objectif : quand il y a moins de boîtes que
  * de bases, l'algorithme répartit les boîtes présentes aussi également que
@@ -90,10 +91,18 @@ export function toMailboxes(
   return mailboxes
 }
 
-/** Tri décroissant par taille, égalités départagées par position d'origine. */
+/**
+ * Tri décroissant par taille. Les égalités sont départagées par adresse
+ * email, puis par position d'origine : le découpage ne dépend donc pas de
+ * l'ordre des lignes du CSV, seulement de son contenu.
+ */
 function bySizeDescending(a: Mailbox, b: Mailbox): number {
   if (b.sizeMb !== a.sizeMb) {
     return b.sizeMb - a.sizeMb
+  }
+  const byEmail = a.email.localeCompare(b.email, 'fr')
+  if (byEmail !== 0) {
+    return byEmail
   }
   return a.index - b.index
 }

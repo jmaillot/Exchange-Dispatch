@@ -2,12 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { balanceMailboxes, toMailboxes, type Mailbox } from '@/lib/balance'
 import { parseCsv } from '@/lib/parse'
 
+const EMAILS = [
+  'alpha@exemple.fr',
+  'beta@exemple.fr',
+  'gamma@exemple.fr',
+  'delta@exemple.fr',
+  'xeta@exemple.fr',
+  'zeta@exemple.fr',
+  'epsilon@exemple.fr',
+  'omega@exemple.fr',
+  'kappa@exemple.fr',
+  'lambda@exemple.fr',
+  'sigma@exemple.fr',
+  'theta@exemple.fr',
+]
+
 function mailbox(index: number, sizeMb: number): Mailbox {
+  const email = EMAILS[index % EMAILS.length] ?? `user${index}@exemple.fr`
   return {
     index,
-    email: `user${index}@exemple.fr`,
+    email,
     sizeMb,
-    row: { UserPrincipalName: `user${index}@exemple.fr`, MailboxSizeMB: String(sizeMb) },
+    row: { UserPrincipalName: email, MailboxSizeMB: String(sizeMb) },
   }
 }
 
@@ -140,16 +156,55 @@ describe('balanceMailboxes', () => {
     expect(signature(second)).toBe(signature(first))
   })
 
-  it('départage les tailles égales par ordre du fichier', () => {
+  it('départage les tailles égales par adresse email', () => {
     const summary = balanceMailboxes({
       mailboxes: mailboxesFromSizes([10, 10, 10, 10]),
       databaseNames: ['A', 'B'],
     })
 
-    // LPT pose 0 dans A puis 1 dans B ; les égalités vont ensuite à la
-    // base d'indice le plus bas, donc 2 revient dans A et 3 dans B.
-    expect(summary.assignments[0]?.mailboxes.map((m) => m.index)).toEqual([0, 2])
-    expect(summary.assignments[1]?.mailboxes.map((m) => m.index)).toEqual([1, 3])
+    // Trié par email (alpha, beta, delta, gamma — 'd' précède 'g'), puis
+    // réparti : alpha et delta dans A, beta et gamma dans B. Le départage
+    // se fait sur l'adresse, pas sur la ligne.
+    expect(summary.assignments[0]?.mailboxes.map((m) => m.email)).toEqual([
+      'alpha@exemple.fr',
+      'delta@exemple.fr',
+    ])
+    expect(summary.assignments[1]?.mailboxes.map((m) => m.email)).toEqual([
+      'beta@exemple.fr',
+      'gamma@exemple.fr',
+    ])
+  })
+
+  it('ignore l’ordre des lignes du CSV', () => {
+    const sizes = [120, 90, 120, 45, 90, 30, 120, 75]
+    const emails = [
+      'zoe@exemple.fr',
+      'marc@exemple.fr',
+      'yann@exemple.fr',
+      'luc@exemple.fr',
+      'anna@exemple.fr',
+      'bob@exemple.fr',
+      'xavier@exemple.fr',
+      'tina@exemple.fr',
+    ]
+
+    const build = (order: number[]) => ({
+      mailboxes: order.map((position) => ({
+        index: position,
+        email: emails[position] ?? '',
+        sizeMb: sizes[position] ?? 0,
+        row: {},
+      })),
+      databaseNames: ['A', 'B', 'C'],
+    })
+
+    const signature = (order: number[]) =>
+      balanceMailboxes(build(order))
+        .assignments.map((assignment) => `${assignment.name}:${assignment.mailboxes.map((m) => m.email).join(',')}`)
+        .join('|')
+
+    const reversed = [...sizes.keys()].reverse()
+    expect(signature(reversed)).toBe(signature([...sizes.keys()]))
   })
 
   it('trie chaque base par taille décroissante à l’export', () => {
