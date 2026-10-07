@@ -10,9 +10,6 @@ export default defineConfig({
     },
   },
   test: {
-    // Le socle (J0) n'a pas encore de suite. Retiré dès l'ajout des
-    // premiers tests en J1 pour ne pas masquer une suite vide par erreur.
-    passWithNoTests: true,
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],

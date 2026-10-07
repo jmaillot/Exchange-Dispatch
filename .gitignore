@@ -18,6 +18,8 @@ Thumbs.db
 .env.local
 .env*.local
 
-# Ne jamais committer de données réelles de boîtes aux lettres
+# Ne jamais committer de données réelles de boîtes aux lettres.
+# Seules exceptions : les fixtures de test et l'exemple fictif.
 *.csv
 !tests/fixtures/*.csv
+!public/exemple.csv

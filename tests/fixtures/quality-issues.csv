@@ -1,0 +1,9 @@
+DisplayName,Alias,SamAccountName,UserPrincipalName,FirstName,LastName,MailboxSizeMB
+Dupont Alice,adupont,a.dupont,alice.dupont@exemple.fr,Alice,Dupont,1840.5
+Adresse Vide,bsansmail,s.sansmail,,Sans,Mail,640
+Ligne Entierement Vide,,,,,
+Taille Nulle,bzero,b.zero,zero@exemple.fr,,,0
+Taille Texte,btexte,b.texte,texte@exemple.fr,,,abc
+Taille Negatif,bnegatif,b.negatif,negatif@exemple.fr,,,-50
+Doublon Exact,bdupont,a.dupont,alice.dupont@exemple.fr,Alice,Dupont,120
+Martin Bruno,bmartin,b.martin,bruno.martin@exemple.fr,Bruno,Martin,1520

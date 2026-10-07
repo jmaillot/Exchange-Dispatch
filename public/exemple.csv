@@ -1,0 +1,11 @@
+DisplayName,Alias,SamAccountName,UserPrincipalName,FirstName,LastName,MailboxSizeMB
+Dupont Alice,adupont,a.dupont,alice.dupont@exemple.fr,Alice,Dupont,1840.5
+Martin Bruno,bmartin,b.martin,bruno.martin@exemple.fr,Bruno,Martin,1520
+Petit Camille,cpetit,c.petit,camille.petit@exemple.fr,Camille,Petit,990.25
+Durand Chloe,bdurand,c.durand,chloe.durand@exemple.fr,Chloe,Durand,760
+Moreau Hugo,bmoreau,h.moreau,hugo.moreau@exemple.fr,Hugo,Moreau,610.75
+Lefevre Ines,blefevre,i.lefevre,ines.lefevre@exemple.fr,Ines,Lefevre,430
+Garnier Julien,bgarnier,j.garnier,julien.garnier@exemple.fr,Julien,Garnier,295.5
+Fontaine Lea,bfontaine,l.fontaine,lea.fontaine@exemple.fr,Lea,Fontaine,180
+Rousseau Marc,brousseau,m.rousseau,marc.rousseau@exemple.fr,Marc,Rousseau,95
+Blanc Nina,bblanc,n.blanc,nina.blanc@exemple.fr,Nina,Blanc,42.5
