@@ -1,0 +1,23 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Build Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Tests
+/coverage/
+
+# Divers
+.DS_Store
+Thumbs.db
+.env
+.env.local
+.env*.local
+
+# Ne jamais committer de données réelles de boîtes aux lettres
+*.csv
+!tests/fixtures/*.csv
